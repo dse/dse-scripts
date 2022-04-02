@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+
+if (( $# < 1 )) ; then
+    >&2 echo "clone: not enough arguments"
+    exit 1
+fi
+
+for i ; do
+    git clone git@github.com:dse/"$i".git
+done
