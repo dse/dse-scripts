@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+shopt -s lastpipe
+
+case "$OSTYPE" in
+    darwin*)
+        case "$1" in
+            *.svg)
+                open -a inkscape "$1"
+                ;;
+            *.sfd|*.ttf)
+                open -a fontforge "$1"
+                ;;
+            inkscape)
+                open -a inkscape "$2"
+                ;;
+            fontforge)
+                open -a fontforge "$2"
+                ;;
+            *)
+                echo "$@: ???"
+                exit 1
+                ;;
+        esac
+        ;;
+    *)
+        echo "$OSTYPE not supported yet."
+        exit 1
+        ;;
+esac
