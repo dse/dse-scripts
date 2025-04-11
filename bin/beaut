@@ -16,12 +16,12 @@ while (<>) {
 
 package My::Parser {
     use HTML::Tagset;
+    use HTML::Entities;
     use base "HTML::Parser";
     sub new {
         my ($class, @args) = @_;
         my $self = $class->SUPER::new(
             @args,
-            utf8_mode => 1,
             unbroken_text => 1,
             start_h       => [\&start,       "self, text, tagname, attr, attrseq"],
             end_h         => [\&end,         "self, text, tagname"],
@@ -34,7 +34,29 @@ package My::Parser {
         $self->{indent} = 4;
         $self->{indent_level} = 0;
         $self->{stack} = [];
+        $self->{is_block} = 1;
         return $self;
+    }
+    our %EMPTY;                 # hr, img, etc.
+    our %BOOLEAN;
+    our %PHRASAL;               # span, abbr, acronym, etc. -- not <p>, etc.
+    our %FORM;                  # input, textarea, etc.
+    our %BLOCK;
+    our %VERBATIM;
+    BEGIN {
+        %EMPTY = %HTML::Tagset::emptyElement;
+        %BOOLEAN = %HTML::Tagset::boolean_attr;
+        foreach my $key (keys %BOOLEAN) {
+            $BOOLEAN{$key} = { $BOOLEAN{$key} => 1 } if ref $BOOLEAN{$key} eq '';
+        }
+        %PHRASAL = %HTML::Tagset::isPhraseMarkup;
+        %FORM = %HTML::Tagset::isFormElement;
+        %BLOCK = %HTML::Tagset::isBodyElement;
+        %VERBATIM = (
+            textarea => 1,
+            pre => 1,
+            script => 1,
+        );
     }
     sub indent {
         my ($self) = @_;
@@ -42,81 +64,107 @@ package My::Parser {
     }
     sub start {
         my ($self, $text, $tagname, $attr, $attrseq) = @_;
-        if (!$self->is_literal) {
+
+        my $was_collapse = $self->collapse;
+        my $will_collapse = $self->collapse(pop => 1);
+        # $self->emit(sprintf("[%s/%s]", $was_collapse, $will_collapse));
+
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit($self->indent);
         }
         $self->emit($text);
-        if (!$HTML::Tagset::emptyElement{$tagname}) {
+        if (!is_empty_element($tagname)) {
             $self->{indent_level} += 1;
             push(@{$self->{stack}}, $tagname);
         }
-        if (!$self->is_literal) {
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit("\n");
         }
     }
     sub end {
         my ($self, $text, $tagname) = @_;
-        my $was_literal = $self->is_literal;
         if (!scalar @{$self->{stack}}) {
             die("too many closing tags");
         }
+        $self->{indent_level} -= 1;
+
+        my $was_collapse = $self->collapse;
+        my $will_collapse = $self->collapse(pop => 1);
+        # $self->emit(sprintf("[%s/%s]", $was_collapse, $will_collapse));
+
+        if (!$self->collapse && !$self->verbatim) {
+            $self->emit($self->indent);
+        }
+        $self->emit($text);
+
         my $opened = pop(@{$self->{stack}});
         if ($opened ne $tagname) {
             die("incorrect closing tag $text (expected </$opened>)");
         }
-        $self->{indent_level} -= 1;
-        if (!$was_literal) {
-            $self->emit($self->indent);
-        }
-        $self->emit($text);
-        if (!$self->is_literal) {
+
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit("\n");
         }
+
     }
     sub text {
         my ($self, $text, $is_cdata) = @_;
-        if ($text !~ /\S/) {
+        if ($self->verbatim) {
+            $self->emit($text);
+            return;
+        }
+        if ($text !~ /\S/ && length($text)) {
+            if ($self->collapse) {
+                $self->emit(' ');
+            }
         } else {
-            $text =~ s{\A\s*}{}s;
-            my $leading_space = length($&) ? $& : undef;
-            $text =~ s{\s*\z}{}s;
-            my $trailing_space = length($&) ? $& : undef;
-            if (!$self->is_literal) {
+            my $leading_space;
+            my $trailing_space;
+            if (!$self->verbatim) {
+                $text =~ s{\A\s*}{}s;
+                $leading_space = length($&) ? $& : undef;
+                $text =~ s{\s*\z}{}s;
+                $trailing_space = length($&) ? $& : undef;
+            }
+            if (!$self->collapse && !$self->verbatim) {
                 $self->emit($self->indent);
             }
+            $self->emit(' ') if $self->collapse && defined $leading_space;
+            $text =~ s{(\R)\s*}{$1 . $self->indent}gme;
             $self->emit($text);
-            if (!$self->is_literal) {
+            $self->emit(' ') if $self->collapse && defined $trailing_space;
+            if (!$self->collapse && !$self->verbatim) {
                 $self->emit("\n");
             }
         }
     }
     sub process {
         my ($self, $text, $tokens) = @_;
-        if (!$self->is_literal) {
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit($self->indent);
         }
         $self->emit($text);
-        if (!$self->is_literal) {
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit("\n");
         }
     }
     sub comment {
         my ($self, $text, $tokens) = @_;
-        if (!$self->is_literal) {
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit($self->indent);
         }
         $self->emit($text);
-        if (!$self->is_literal) {
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit("\n");
         }
     }
     sub declaration {
         my ($self, $text) = @_;
-        if (!$self->is_literal) {
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit($self->indent);
         }
         $self->emit($text);
-        if (!$self->is_literal) {
+        if (!$self->collapse && !$self->verbatim) {
             $self->emit("\n");
         }
     }
@@ -124,12 +172,65 @@ package My::Parser {
         my ($self, $text) = @_;
         $self->{html} .= $text;
     }
-    sub is_literal {
-        my ($self) = @_;
+    sub clean_tag {
+        my ($tagname, $attr, $attrseq) = @_;
+        my $str = "<" . $tagname;
+        foreach my $attr_name (@$attrseq) {
+            my $attr_value = $attr->{$attr_name};
+            if (is_boolean_attr($tagname, $attr_name)) {
+                $str .= sprintf(' %s', $attr_name);
+            } else {
+                $str .= sprintf(' %s="%s"', $attr_name, encode_entities($attr_value));
+            }
+        }
+        if (is_empty_element($tagname)) {
+            $str .= ' />';
+        } else {
+            $str .= '>';
+        }
+        return $str;
+    }
+    sub is_empty_element {
+        my ($tagname) = @_;
+        return $EMPTY{$tagname};
+    }
+    sub is_boolean_attr {
+        my ($tagname, $attr_name) = @_;
+        my $boolean = $BOOLEAN{$tagname};
+        return if !defined $boolean;
+        return 1 if ref $boolean eq '' && $boolean eq $attr_name;
+        return 1 if ref $boolean eq 'HASH' && $boolean->{$attr_name};
+        return;
+    }
+    sub is_phrasal_element {
+        my ($tagname) = @_;
+        return $PHRASAL{$tagname};
+    }
+    sub is_form_element {
+        my ($tagname) = @_;
+        return $FORM{$tagname};
+    }
+    sub collapse {
+        my ($self, %args) = @_;
+        my @stack = @{$self->{stack}};
+        if (defined $args{push}) {
+            push(@stack, $args{push});
+        }
+        if (defined $args{pop}) {
+            pop(@stack);
+        }
+        foreach my $tag (reverse @stack) {
+            return 1 if $PHRASAL{$tag};
+        }
+        return;
+    }
+    sub verbatim {
+        my ($self, $tagname) = @_;
+        if (defined $tagname) {
+            return $VERBATIM{$tagname};
+        }
         foreach my $tag (reverse @{$self->{stack}}) {
-            return 1 if $tag eq 'textarea';
-            return 1 if $tag eq 'pre';
-            return 1 if $tag eq 'script';
+            return 1 if $VERBATIM{$tag};
         }
         return;
     }
