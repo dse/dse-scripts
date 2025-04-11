@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+shopt -s lastpipe
+
+main () {
+    if type -p markdown_py >/dev/null 2>&1 ; then
+        exec markdown_py -x table "$@"
+    fi
+    if type -p markdown-it >/dev/null 2>&1 ; then
+        exec markdown-it "$@"
+    fi
+    if type -p markdown >/dev/null 2>&1 ; then
+        exec markdown "$@"
+    fi
+    echo "markdown_py, markdown-it, or markdown not found" >&2
+    exit 1
+}
+
+main "$@"

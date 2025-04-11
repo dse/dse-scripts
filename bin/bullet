@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use open IO => qw(:locale);
+
+while (<>) {
+    s{\R\z}{};
+    s{^(\s*)
+      (?:
+          \N{BULLET}|
+          \N{MIDDLE DOT}|
+          \N{TRIANGULAR BULLET}|
+          \N{HYPHEN BULLET}|
+          \N{WHITE BULLET}
+      )\s*}
+     {$1-   }x;
+} continue {
+    print("$_\n");
+}
