@@ -64,22 +64,17 @@ package My::Parser {
     }
     sub start {
         my ($self, $text, $tagname, $attr, $attrseq) = @_;
-
-        my $was_collapse = $self->collapse;
-        my $will_collapse = $self->collapse(pop => 1);
-        # $self->emit(sprintf("[%s/%s]", $was_collapse, $will_collapse));
-
         if (!$self->collapse && !$self->verbatim) {
             $self->emit($self->indent);
         }
         $self->emit($text);
         if (!is_empty_element($tagname)) {
-            $self->{indent_level} += 1;
             push(@{$self->{stack}}, $tagname);
         }
         if (!$self->collapse && !$self->verbatim) {
             $self->emit("\n");
         }
+        $self->{indent_level} += 1;
     }
     sub end {
         my ($self, $text, $tagname) = @_;
@@ -87,25 +82,17 @@ package My::Parser {
             die("too many closing tags");
         }
         $self->{indent_level} -= 1;
-
-        my $was_collapse = $self->collapse;
-        my $will_collapse = $self->collapse(pop => 1);
-        # $self->emit(sprintf("[%s/%s]", $was_collapse, $will_collapse));
-
         if (!$self->collapse && !$self->verbatim) {
             $self->emit($self->indent);
         }
         $self->emit($text);
-
         my $opened = pop(@{$self->{stack}});
         if ($opened ne $tagname) {
             die("incorrect closing tag $text (expected </$opened>)");
         }
-
         if (!$self->collapse && !$self->verbatim) {
             $self->emit("\n");
         }
-
     }
     sub text {
         my ($self, $text, $is_cdata) = @_;
