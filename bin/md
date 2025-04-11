@@ -6,6 +6,7 @@ shopt -s lastpipe
 
 main () {
     if type -p markdown_py >/dev/null 2>&1 ; then
+        # see https://python-markdown.github.io/extensions/
         exec markdown_py -x table "$@"
     fi
     if type -p markdown-it >/dev/null 2>&1 ; then
