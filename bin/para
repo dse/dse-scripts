@@ -1,0 +1,106 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use open IO => qw(:locale);
+
+my @element;
+my $element;
+while (<>) {
+    s{\R\z}{};                  # safer chomp
+    if (!m{\S}) {               # blank lines end paragraphs
+        undef $element;
+        next;
+    }
+    s{^\s*}{};                  # remove and save indentation
+    my $indent = $&;
+    if (!defined $element) {    # start of paragraph (or list item)
+        my $bullet;
+        if (s{(?:
+                  \N{BULLET}\s*|
+                  \N{MIDDLE DOT}\s*|
+                  [-+.*o]\s+
+              )}{}x) {
+            $bullet = $&;
+        }
+        $element = {
+            bullet => $bullet,
+            lines => [$_],
+            indent => $indent,
+            type => 'p',
+        };
+        push(@element, $element);
+    } else {
+        push(@{$element->{lines}}, $_);
+    }
+}
+
+# contiguous paragraphs starting with a bullet become list items.
+for (my $i = 0; $i < $#element; $i += 1) {
+    my $this_element = $element[$i];
+    my $next_element = $element[$i + 1];
+    my $this_bullet = $this_element->{bullet};
+    my $next_bullet = $next_element->{bullet};
+    if (defined $this_bullet && defined $next_bullet) {
+        $this_element->{type} = 'li';
+        $next_element->{type} = 'li';
+    }
+}
+
+# non-contiguous paragraphs starting with a bullet stay paragraphs.
+foreach my $element (@element) {
+    if (defined $element->{bullet} && $element->{type} eq 'p') {
+        $element->{lines}->[0] = $element->{bullet} + $element->{lines}->[0];
+        delete $element->{bullet};
+    }
+}
+
+my $is_list = 0;
+my $indent;
+my $list_indent;
+foreach my $element (@element) {
+    if ($element->{type} eq 'p') {
+        if ($is_list) {
+            end_list();
+        }
+        print_p($element);
+    } elsif ($element->{type} eq 'li') {
+        if (!$is_list) {
+            start_list($element);
+        }
+        print_li($element);
+    }
+}
+end_list();
+
+sub end_list {
+    return if !$is_list;
+    $is_list = 0;
+    print($list_indent, "</ul>\n\n");
+    undef $list_indent;
+}
+
+sub start_list {
+    return if $is_list;
+    $is_list = 1;
+    my ($element) = @_;
+    $list_indent = $element->{indent};
+    print($list_indent, "<ul>\n");
+}
+
+sub print_p {
+    my ($element) = @_;
+    print($element->{indent}, "<p>\n");
+    foreach my $line (@{$element->{lines}}) {
+        print($element->{indent}, "    ", $line, "\n");
+    }
+    print($element->{indent}, "</p>\n");
+}
+
+sub print_li {
+    my ($element) = @_;
+    print($element->{indent}, "<li>\n");
+    foreach my $line (@{$element->{lines}}) {
+        print($element->{indent}, "    ", $line, "\n");
+    }
+    print($element->{indent}, "</li>\n");
+}
