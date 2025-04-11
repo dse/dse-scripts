@@ -1,0 +1,137 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use open IO => qw(:locale);
+
+my $parser = My::Parser->new();
+while (<>) {
+    $parser->parse($_);
+} continue {
+    if (eof) {
+        $parser->eof();
+        print $parser->{html};
+        $parser = My::Parser->new(unbroken_text => 1);
+    }
+}
+
+package My::Parser {
+    use HTML::Tagset;
+    use base "HTML::Parser";
+    sub new {
+        my ($class, @args) = @_;
+        my $self = $class->SUPER::new(
+            @args,
+            utf8_mode => 1,
+            unbroken_text => 1,
+            start_h       => [\&start,       "self, text, tagname, attr, attrseq"],
+            end_h         => [\&end,         "self, text, tagname"],
+            text_h        => [\&text,        "self, text, is_cdata"],
+            process_h     => [\&process,     "self, text, tokens"],
+            comment_h     => [\&comment,     "self, text, tokens"],
+            declaration_h => [\&declaration, "self, text"],
+        );
+        $self->{html} = "";
+        $self->{indent} = 4;
+        $self->{indent_level} = 0;
+        $self->{stack} = [];
+        return $self;
+    }
+    sub indent {
+        my ($self) = @_;
+        return " " x ($self->{indent_level} * $self->{indent});
+    }
+    sub start {
+        my ($self, $text, $tagname, $attr, $attrseq) = @_;
+        if (!$self->is_literal) {
+            $self->emit($self->indent);
+        }
+        $self->emit($text);
+        if (!$HTML::Tagset::emptyElement{$tagname}) {
+            $self->{indent_level} += 1;
+            push(@{$self->{stack}}, $tagname);
+        }
+        if (!$self->is_literal) {
+            $self->emit("\n");
+        }
+    }
+    sub end {
+        my ($self, $text, $tagname) = @_;
+        my $was_literal = $self->is_literal;
+        if (!scalar @{$self->{stack}}) {
+            die("too many closing tags");
+        }
+        my $opened = pop(@{$self->{stack}});
+        if ($opened ne $tagname) {
+            die("incorrect closing tag $text (expected </$opened>)");
+        }
+        $self->{indent_level} -= 1;
+        if (!$was_literal) {
+            $self->emit($self->indent);
+        }
+        $self->emit($text);
+        if (!$self->is_literal) {
+            $self->emit("\n");
+        }
+    }
+    sub text {
+        my ($self, $text, $is_cdata) = @_;
+        if ($text !~ /\S/) {
+        } else {
+            $text =~ s{\A\s*}{}s;
+            my $leading_space = length($&) ? $& : undef;
+            $text =~ s{\s*\z}{}s;
+            my $trailing_space = length($&) ? $& : undef;
+            if (!$self->is_literal) {
+                $self->emit($self->indent);
+            }
+            $self->emit($text);
+            if (!$self->is_literal) {
+                $self->emit("\n");
+            }
+        }
+    }
+    sub process {
+        my ($self, $text, $tokens) = @_;
+        if (!$self->is_literal) {
+            $self->emit($self->indent);
+        }
+        $self->emit($text);
+        if (!$self->is_literal) {
+            $self->emit("\n");
+        }
+    }
+    sub comment {
+        my ($self, $text, $tokens) = @_;
+        if (!$self->is_literal) {
+            $self->emit($self->indent);
+        }
+        $self->emit($text);
+        if (!$self->is_literal) {
+            $self->emit("\n");
+        }
+    }
+    sub declaration {
+        my ($self, $text) = @_;
+        if (!$self->is_literal) {
+            $self->emit($self->indent);
+        }
+        $self->emit($text);
+        if (!$self->is_literal) {
+            $self->emit("\n");
+        }
+    }
+    sub emit {
+        my ($self, $text) = @_;
+        $self->{html} .= $text;
+    }
+    sub is_literal {
+        my ($self) = @_;
+        foreach my $tag (reverse @{$self->{stack}}) {
+            return 1 if $tag eq 'textarea';
+            return 1 if $tag eq 'pre';
+            return 1 if $tag eq 'script';
+        }
+        return;
+    }
+}
+;
