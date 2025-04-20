@@ -25,6 +25,26 @@ case "$OSTYPE" in
                 ;;
         esac
         ;;
+    linux*)
+        case "$1" in
+            *.svg)
+                ( inkscape "$1" >/dev/null 2>/dev/null & )
+                ;;
+            *.sfd|*.ttf)
+                ( fontforge "$1" >/dev/null 2>/dev/null & )
+                ;;
+            inkscape)
+                ( inkscape "$2" >/dev/null 2>/dev/null & )
+                ;;
+            fontforge)
+                ( fontforge "$2" >/dev/null 2>/dev/null & )
+                ;;
+            *)
+                echo "$@: ???"
+                exit 1
+                ;;
+        esac
+        ;;
     *)
         echo "$OSTYPE not supported yet."
         exit 1
