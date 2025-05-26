@@ -1,0 +1,125 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use File::Spec;
+use Fcntl qw(:mode);
+
+if (scalar @ARGV != 2) {
+    die("only_in: incorrect number of arguments\n");
+}
+
+only_in($ARGV[0], $ARGV[1]);
+
+sub only_in {
+    my ($a, $b, $root_a, $root_b) = @_;
+    $root_a //= $a;
+    $root_b //= $b;
+    my @stat_a = lstat($a);
+    if (!scalar @stat_a) {
+        printf("%s: %s\n", $a, $!);
+        return;
+    }
+    my @stat_b = lstat($b);
+    if (!scalar @stat_a) {
+        printf("%s: %s\n", $b, $!);
+        return;
+    }
+    my $type_a = file_type($stat_a[2]);
+    my $type_b = file_type($stat_b[2]);
+    if ($type_a ne $type_b) {
+        printf("File %s is a %s while file %s is a %s\n", $a, $type_a, $b, $type_b);
+        return;
+    }
+    if ($type_a ne "directory") {
+        return;
+    }
+    # $a and $b are directories.
+    my $ah;
+    if (!opendir($ah, $a)) {
+        printf("%s: %s\n", $a, $!);
+        return;
+    }
+    my $bh;
+    if (!opendir($bh, $b)) {
+        printf("%s: %s\n", $b, $!);
+        return;
+    }
+    my %a;
+    my %b;
+    my @a = readdir($ah);
+    my @b = readdir($bh);
+    $a{$_} = 1 foreach @a;
+    $b{$_} = 1 foreach @b;
+    foreach my $only_in_a (grep { !$b{$_} } @a) {
+        printf("Only in %s: %s\n", $a, $only_in_a);
+    }
+    foreach my $only_in_b (grep { !$a{$_} } @b) {
+        printf("Only in %s: %s\n", $b, $only_in_b);
+    }
+    my @ents = grep { $b{$_} } keys @a;
+    foreach my $ent (@ents) {
+        my $ent_a = $a . '/' . $ent;
+        my $ent_b = $b . '/' . $ent;
+        only_in($ent_a, $ent_b, $root_a, $root_b);
+    }
+}
+
+sub file_type {
+    my ($mode) = @_;
+    return "regular file"     if S_ISREG($mode);
+    return "directory"        if S_ISDIR($mode);
+    return "character device" if S_ISCHR($mode);
+    return "block device"     if S_ISBLK($mode);
+    return "fifo"             if S_ISFIFO($mode);
+    return "symbolic link"    if S_ISLNK($mode);
+    return "socket"           if S_ISSOCK($mode);
+    return "weird file";
+}
+
+=head1 NAME
+
+only in - recursively compare existence of files in two directory
+trees
+
+=head1 SYNOPSIS
+
+    onlyin DIR_A DIR_B
+
+=head1 DESCRIPTION
+
+onlyin finds files and directories that only exist in one of the
+supplied directories.
+
+onlyin outputs essentially the same information as
+
+    diff -r -q --no-dereference DIR_A DIR_B
+
+though there may be output differences.
+
+For each object that only exists in one of the two directories, onlyin
+prints a message indicating so.
+
+For each object that exists in both directories, if the files are of
+different types, onlyin prints a message indicating so.
+
+If the files are of the same type and are not directories, onlyin
+outputs nothing.
+
+For directories, both directories are opened, and the process executes
+recursively.
+
+Output is sorted by filename.
+
+onlyin does not follow symbolic links.
+
+=head1 OPTIONS
+
+There are no command-line options at this time.
+
+=head1 AUTHOR
+
+dsembry@gmail.com
+
+=head1 LICENSE
+
+Under the same terms as Perl itself.

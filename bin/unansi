@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+# unansi: remove terminal control sequences from input
+use warnings;
+use strict;
+use open IO => qw(:locale);
+while (<>) {
+    s{\R\z}{};                  # safer chomp
+    s{\r}{\n}g;                 # carriage returns
+    s{\e\[(\d+(;\d+)*)?m}{}g;   # colors
+    s{\e\[1G}{}g;               # found in npm run dev output
+    s{\e\[0K}{}g;               # found in npm run dev output
+    print("$_\n");
+}
