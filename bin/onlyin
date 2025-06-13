@@ -46,9 +46,9 @@ sub only_in {
     }
     my %a;
     my %b;
-    my @a = grep { $_ ne '.' && $_ ne '..' } readdir($ah);
+    my @a = sort grep { $_ ne '.' && $_ ne '..' } readdir($ah);
     closedir($ah);
-    my @b = grep { $_ ne '.' && $_ ne '..' } readdir($bh);
+    my @b = sort grep { $_ ne '.' && $_ ne '..' } readdir($bh);
     closedir($bh);
     $a{$_} = 1 foreach @a;
     $b{$_} = 1 foreach @b;
