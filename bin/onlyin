@@ -46,8 +46,10 @@ sub only_in {
     }
     my %a;
     my %b;
-    my @a = readdir($ah);
-    my @b = readdir($bh);
+    my @a = grep { $_ ne '.' && $_ ne '..' } readdir($ah);
+    closedir($ah);
+    my @b = grep { $_ ne '.' && $_ ne '..' } readdir($bh);
+    closedir($bh);
     $a{$_} = 1 foreach @a;
     $b{$_} = 1 foreach @b;
     foreach my $only_in_a (grep { !$b{$_} } @a) {
@@ -56,7 +58,7 @@ sub only_in {
     foreach my $only_in_b (grep { !$a{$_} } @b) {
         printf("Only in %s: %s\n", $b, $only_in_b);
     }
-    my @ents = grep { $b{$_} } keys @a;
+    my @ents = grep { $b{$_} } @a;
     foreach my $ent (@ents) {
         my $ent_a = $a . '/' . $ent;
         my $ent_b = $b . '/' . $ent;
