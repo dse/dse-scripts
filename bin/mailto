@@ -1,9 +1,28 @@
 #!/usr/bin/env perl
 use warnings;
 use strict;
+use HTML::Entities qw(encode_entities);
+
 use open IO => qw(:locale);
+
+my $attrs_string = attrs_string();
+
 while (<>) {
+    # regex courtesy of whatwg - DO NOT MODIFY.
     s{[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*}
-     {sprintf('<a href="mailto:%s">%s</a>', $&, $&)}ge;
+     {sprintf('<a %s href="mailto:%s">%s</a>', $attrs_string, encode_entities($&), encode_entities($&))}ge;
+} continue {
     print;
+}
+
+sub attrs_string {
+    my $attr = eval { do "$ENV{HOME}/.mailto.pl" };
+    if (!$attr) {
+        return;
+    }
+    my @attr;
+    foreach my $attr_name (keys %$attr) {
+        push(@attr, sprintf('%s="%s"', $attr_name, $attr->{$attr_name}));
+    }
+    return join(' ', @attr);
 }
