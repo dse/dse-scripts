@@ -15,7 +15,7 @@ while (<>) {
     my $indent = $&;
     if (!defined $element) {    # start of paragraph (or list item)
         my $bullet;
-        if (s{(?:
+        if (s{^(?:
                   \N{BULLET}\s*|
                   \N{MIDDLE DOT}\s*|
                   [-+.*o]\s+
@@ -49,7 +49,7 @@ for (my $i = 0; $i < $#element; $i += 1) {
 # non-contiguous paragraphs starting with a bullet stay paragraphs.
 foreach my $element (@element) {
     if (defined $element->{bullet} && $element->{type} eq 'p') {
-        $element->{lines}->[0] = $element->{bullet} + $element->{lines}->[0];
+        $element->{lines}->[0] = $element->{bullet} . $element->{lines}->[0];
         delete $element->{bullet};
     }
 }
