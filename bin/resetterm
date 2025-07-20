@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+if [[ -t 1 ]] ; then
+    echo -n $'\e]110\e\\'       # reset foreground color
+    echo -n $'\e]111\e\\'       # reset background color
+    echo -n $'\e]112\e\\'       # reset cursor color
+    echo -n $'\e]117\e\\'       # reset highlight foreground color
+    echo -n $'\e]119\e\\'       # reset highlight foreground color
+fi

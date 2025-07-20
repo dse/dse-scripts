@@ -1,0 +1,39 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use open IO => qw(:locale);
+
+local $/ = undef;
+while (<>) {
+    while (/<[^!\/?][^>]*>/g) {
+        local $_ = $&;
+        while (/\sclass=\"([^\"]*)\"/g) {
+            my @class = grep { !is_bootstrap_class($_) } split(' ', $1);
+            print("$_\n") foreach @class;
+            foreach my $class (@class) {
+                if ($class =~ /--\d+$/) {
+                    print("$`--\n");
+                }
+            }
+        }
+    }
+}
+
+our %BOOTSTRAP;
+BEGIN {
+    %BOOTSTRAP = (
+        lead => 1,
+        row => 1,
+        accordion => 1,
+    );
+}
+
+sub is_bootstrap_class {
+    local $_ = shift;
+    return 1 if $BOOTSTRAP{$_};
+    return 1 if /^(col|row-cols)-((sm|md|lg|xl|xxl)-)?\d+$/x;
+    return 1 if /^d-((sm|md|lg|xl|xxl)-)?(inline|block|inline-block)$/x;
+    return 1 if /^(m[xytesb]?)-((sm|md|lg|xl|xxl)-)?(\d+|auto)$/x;
+    return 1 if /^(p[xytesb]?)-((sm|md|lg|xl|xxl)-)?(\d+|auto)$/x;
+    return 1 if /^(row-gap|column-gap)-\d+$/x;
+}

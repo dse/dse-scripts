@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+if (scalar @ARGV) {
+    for (@ARGV) {
+        print("$_\n") if -B $_;
+    }
+} else {
+    while (<>) {
+        s{\R\z}{};
+        print("$_\n") if -B $_;
+    }
+}

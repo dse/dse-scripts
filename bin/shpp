@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+shopt -s lastpipe
+
+shopt -s extglob
+
+declare -i col=0
+declare -i cols=72
+declare -i indent=0
+
+while getopts 'w:' OPTION ; do
+    case "${OPTION}" in
+        w)
+            cols="${OPTARG}"
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+for (( i = 1; i <= cols; i += 1)) ; do
+    echo -n "#"
+done
+
+echo
+
+for i ; do
+    if [[ "$i" =~ ^-?-?[-A-Za-z0-9+,./:=@]*$ ]] ; then
+        out="$i"
+    elif [[ "$i" =~ ^\{[-A-Za-z0-9+./:=@]*\}$ ]] ; then
+        out="$i"
+    elif [[ "$i" =~ ^--[-A-Za-z0-9+,./:@]+= ]] ; then
+        j="${i%%=*}"
+        k="${i#*=}"
+        out="${j}=${k@Q}"
+    else
+        out="${i@Q}"
+    fi
+    if (( col > 4 && col + ${#out} > ${cols} - 3 )) ; then
+        echo " \\"
+        echo -n "    "
+        col=4
+    else
+        if (( col )) ; then
+            echo -n " "
+            col+=1
+        fi
+    fi
+    echo -n "${out}"
+    col+=$(( ${#out} ))
+done
+
+echo

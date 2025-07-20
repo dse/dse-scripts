@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+shopt -s lastpipe
+
+main () {
+    if (( $# )) ; then
+        args=("$@")
+    else
+        args=(.)
+    fi
+    for arg in "${args[@]}" ; do
+        if [[ -d "${arg}" ]] ; then
+            find "${arg}" -type l
+            find "${arg}" -type l >&2
+        elif [[ -L "${arg}" ]] ; then
+            echo "${arg}"
+            echo "${arg}" >&2
+        else
+            :
+        fi
+    done | readarray -t symlinks
+    for symlink in "${symlinks[@]}" ; do
+        abs_symlink="$(realpath --no-symlinks "${symlink}")"
+        abs_symlink_dir="$(dirname "${abs_symlink}")"
+        symlink_dir="$(dirname "${symlink}")"
+        symlink_dest="$(readlink "${symlink}")"
+        case "${symlink_dest}" in
+            /*)
+                continue
+                ;;
+        esac
+        abs_symlink_dest="$(realpath --no-symlinks "${abs_symlink_dir}/${symlink_dest}")"
+        rel_symlink_dest="$(realpath --no-symlinks --relative-to="${abs_symlink_dir}" "${abs_symlink_dest}")"
+
+        echo "symlink ${symlink}"
+        echo "        abs ${abs_symlink}"
+        echo "        dest ${symlink_dest}"
+        echo "             ${abs_symlink_dest}"
+        echo "             is ${rel_symlink_dest}"
+        echo "             rel to ${abs_symlink_dir}"
+
+        ln -n -f -s "${rel_symlink_dest}" "${abs_symlink}"
+
+        # new symlink destination
+        # should point to abs_symlink_dest
+        #  relative to ${abs_symlink_dir}
+
+    done
+}
+
+main "$@"

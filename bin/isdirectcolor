@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use FindBin;
+use lib "${FindBin::Bin}/../lib";
+use My::Term qw(term_query);
+use My::Term::Raw qw(enable_raw_mode disable_raw_mode);
+use Data::Dumper qw(Dumper);
+
+exit if !-t 0 || !-t 1;
+
+use constant ST => "\e\\";
+use constant DCS => "\eP";
+
+enable_raw_mode();
+my $response = (term_query(prompt => "\e[38;2;254;254;254m", query => DCS . '$qm' . ST, chop => ST) ||
+                term_query(prompt => "\e[38:2:254:254:254m", query => DCS . '$qm' . ST, chop => ST));
+disable_raw_mode();
+exit($response =~ /254:254:254/ ? 0 : 1);

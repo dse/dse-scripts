@@ -1,0 +1,100 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use Text::Tabs qw(expand);
+
+our $strict = 1;
+
+our %CHARS = (
+    # order is up, right, down, left
+    'right,left' => '─',
+    'up,down' => '│',
+    'right,down' => '┌',
+    'down,left' => '┐',
+    'up,right' => '└',
+    'up,left' => '┘',
+    'up,right,down' => '├',
+    'up,down,left' => '┤',
+    'right,down,left' => '┬',
+    'up,right,left' => '┴',
+    'up,right,down,left' => '┼',
+    'left' => '╴',
+    'up' => '╵',
+    'right' => '╶',
+    'down' => '╷',
+);
+
+our %CHARS_REVERSE = reverse %CHARS;
+
+my @lines;
+while (<>) {
+    s{\R\z}{};
+    push(@lines, $_);
+}
+
+for (my $row = 0; $row < scalar @lines; $row += 1) {
+    my $line = $lines[$row];
+    for (my $col = 0; $col < length($line); $col += 1) {
+        my $chr = get_char($row, $col);
+    }
+}
+
+sub look {
+    my ($row, $col) = @_;
+    my $chr = get_char($row, $col);
+    my $look_left = 0;
+    my $look_right = 0;
+    my $look_up = 0;
+    my $look_down = 0;
+    if ($chr eq '-') {
+        $look_left = $look_right = 1;
+    } elsif ($chr eq '|') {
+        $look_up = $look_down = 1;
+        if (!$strict) {
+            $look_left = $look_right = 1;
+        }
+    } elsif ($chr eq "'") {
+        $look_up = 1;
+        if (!$strict) {
+            $look_left = $look_right = 1;
+        }
+    } elsif ($chr eq ".") {
+        $look_down = 1;
+        if (!$strict) {
+            $look_left = $look_right = 1;
+        }
+    } else {
+        return;
+    }
+    my @dirs = [];
+    push(@dirs, 'up')    if $look_up;
+    push(@dirs, 'right') if $look_right;
+    push(@dirs, 'down')  if $look_down;
+    push(@dirs, 'left')  if $look_left;
+    my $dirs = join(",", @dirs);
+    if (!scalar @dirs) {
+        return;
+    }
+    our $box_draw = $CHARS{$dirs};
+    if (!defined $box_draw) {
+        return;
+    }
+}
+
+sub get_char {
+    my ($row, $col) = @_;
+    return if $row < 0;
+    return if $row >= scalar @lines;
+    return if $col < 0;
+    return if $col >= length($lines[$row]);
+    return substr($lines[$row], $col, 1);
+}
+
+sub put_char {
+    my ($row, $col, $char) = @_;
+    my $line = $lines[$row];
+    if (!defined $line) {
+        $lines[$row] = (' ' x $col) . $char;
+        return;
+    }
+}

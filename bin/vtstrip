@@ -1,0 +1,79 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+
+local $/ = undef;
+while (<>) {
+    s{ \e\[ ([0-9]+(;[0-9]+)*)? m }{}gx; # color sequences and such
+    s{ \e\[ (38|48) (:[0-9]*)* m }{}gx; # color sequences and such
+
+    s{\e\[[0-9]*@}{}g;            # insert blanks
+    s{\e\[[0-9]* @}{}g;           # shift left
+    s{\e\[[0-9]*A}{}g;            # cursor up
+    s{\e\[[0-9]* A}{}g;           # shift right
+    s{\e\[[0-9]*B}{}g;            # cursor down
+    s{\e\[[0-9]*C}{}g;            # cursor forward
+    s{\e\[[0-9]*D}{}g;            # cursor backward
+    s{\e\[[0-9]*E}{}g;            # cursor next line
+    s{\e\[[0-9]*F}{}g;            # cursor preceding line
+    s{\e\[[0-9]*G}{}g;            # cursor character absolute
+
+    s{\e\[([0-9]+(;[0-9]+))?H}{}g; # cursor posn
+
+    s{\e\[[0-9]*I}{}g;            # cursor forward tab
+    s{\e\[[0-9]*J}{}g;            # erase in display
+    s{\e\[[0-9]* J}{}g;           # erase in display
+    s{\e\[[0-9]*K}{}g;            # erase in line
+    s{\e\[[0-9]* K}{}g;           # erase in line
+    s{\e\[[0-9]*L}{}g;            # insert lines
+    s{\e\[[0-9]*M}{}g;            # delete lines
+    s{\e\[[0-9]*P}{}g;            # delete characters
+    s{\e\[[0-9]*#P}{}g;           # push colors onto stack
+    s{\e\[[0-9]*#Q}{}g;           # pop colors from stack
+    s{\e\[[0-9]*S}{}g;            # scroll up
+    s{\e\[[0-9]*T}{}g;            # scroll down
+    s{\e\[\?5W}{}g;               # reset tab stops
+    s{\e\[[0-9]*X}{}g;            # erase characters
+    s{\e\[[0-9]*Z}{}g;            # cursor back tab
+    s{\e\[[0-9]*\^}{}g;           # scroll down
+    s{\e\[[0-9]*`}{}g;            # character position abs
+    s{\e\[[0-9]*a}{}g;            # character position rel
+    s{\e\[[0-9]*b}{}g;            # repeat preceding char
+    s{\e\[[0-9]*d}{}g;            # line pos abs
+    s{\e\[[0-9]*e}{}g;            # line pos rel
+    s{\e\[[0-9]*g}{}g;            # tab clear
+
+    # ESC ? ___;___;___ h (to set) or l (to reset)
+    my $PRIVATE_MODE = qr{(3|4|5|7|8|10|12|13|18|25|30|40|44|1047|1048|1049|2004|1004)};
+    s{\e\[\?(${PRIVATE_MODE}(;${PRIVATE_MODE})*)?[hl]}{}g;   # dec private mode set, selected
+
+    s{\e\[([0-9]+(;[0-9]+)?)?t}{}g; # window manipln
+
+    s{\e\]\?1h}{<APP CURSOR KEYS>}g;
+    s{\e\]\?1l}{<NORMAL CURSOR KEYS>}g;
+    s{\e=}{<ENTER ALT KEYPAD MODE>}g;
+    s{\e>}{<EXIT ALT KEYPAD MODE>}g;
+
+    s{\e7}{}g;                  # save cursor
+    s{\e8}{}g;                  # restore cursor
+    s{\eF}{}g;                  # lower left corner
+    s{\eA}{}g;                  # up
+    s{\eB}{}g;                  # down
+    s{\eC}{}g;                  # right
+    s{\eD}{}g;                  # left
+    s{\eF}{}g;                  # graphics mode
+    s{\eG}{}g;                  # exit graphics mode
+    s{\eH}{}g;                  # move cursor home
+    s{\eI}{}g;                  # reverse line feed
+
+    # CONTROL CHARACTERS
+    s{\cH}{}g;                  # remove backspaces
+    s{\cM}{}g;                  # remove ^M
+    s{\cL}{}g;                  # remove form feeds
+    s{\cK}{}g;                  # remove vertical tabs
+
+    # MULTIPLE CONSECUTIVE BLANK LINES
+    s{\r?\n([ \t]*\r?\n)+}{}gx;
+
+    print;
+}

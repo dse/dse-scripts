@@ -1,0 +1,86 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use open IO => qw(:locale);
+
+use IO::Handle;
+use Text::Tabs qw(expand);
+use Getopt::Long qw();
+use Time::HiRes;
+use POSIX qw(floor);
+
+our $opt_line_number = 0;
+our $opt_every = 0;
+our $opt_secs = 0;
+our $opt_help = 0;
+our $opt_print = 0;
+
+Getopt::Long::Configure(qw(gnu_getopt));
+Getopt::Long::GetOptions(
+    "n|number|line-number" => \$opt_line_number,
+    "e|every=i" => \$opt_every,
+    "s|secs|seconds=f" => \$opt_secs,
+    "p|print" => \$opt_print,
+    "h|help" => \$opt_help,
+) or die("Type 'cr --help' for help.\n");
+
+if ($opt_help) {
+    usage();
+    exit(0);
+}
+
+sub usage { print <<"END"; }
+cr [<option> ...] [<filename> ...]
+    -h, --help           Print this message
+    -n, --number         Precede every line by a line number
+        --every=<int>    Print every <int>'th line
+        --secs=<float>   Print a line every <float> seconds
+    -p, --print
+END
+
+STDOUT->autoflush(1);
+my $columns = `tput cols`;
+
+my $TTY;
+if (-t 1) {
+    open($TTY, '>', "/dev/tty");
+    $TTY->autoflush(1);
+}
+
+my $start;
+my $now;
+
+while (<>) {
+    if ($opt_print) {
+        print("$_");
+    }
+    if ($opt_every) {
+        next if $. % $opt_every;
+    }
+    if ($opt_secs) {
+        $now = Time::HiRes::time();
+        $start //= $now;
+        if (($now - $start) < $opt_secs) {
+            next;
+        }
+        $start += floor(($now - $start) / $opt_secs) * $opt_secs;
+    }
+    if ($opt_line_number) {
+        $_ = sprintf("%d: %s", $., $_);
+    }
+    # if (!$TTY) {
+    #     print ($_);
+    #     next;
+    # }
+    s{\R\z}{};
+    $_ = expand($_);
+    if (length($_) > $columns) {
+        substr($_, $columns) = "";
+    }
+    if (-t 1) {
+        printf $TTY ("\r%s\e[K", $_);
+    }
+}
+if (-t 1) {
+    printf $TTY ("\r\e[K");
+}

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+shopt -s lastpipe
+
+SELF="$(realpath "$0")"
+
+for file ; do
+    archive="$(realpath "$file")"
+    sum="$(sha1sum "$archive" | awk '{print $1}' | cut -c1-8)"
+    dir="${archive%.*}--${sum}"
+    if [[ -e "${dir}" ]] ; then
+        continue
+    fi
+    (
+        case "${archive,,}" in
+            *.exe)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                7z x "${archive}"
+                ;;
+            *.zip)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                unzip "${archive}"
+                ;;
+            *.cab)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                cabextract "${archive}"
+                ;;
+            *.tar)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                tar -x -f "${archive}"
+                ;;
+            *.tar.gz|*.tgz)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                tar -x -z -f "${archive}"
+                ;;
+            *.tar.xz)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                tar -x -J -f "${archive}"
+                ;;
+            *.tar.Z)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                tar -x -Z -f "${archive}"
+                ;;
+            *.tar.bz2)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                tar -x -j -f "${archive}"
+                ;;
+            *.tar.lz)
+                mkdir -p "${dir}"
+                cd "${dir}"
+                tar -x --lzip -f "${archive}"
+                ;;
+            *.tar.*)
+                echo "I DO NOT KNOW HOW TO DEAL WITH $i"
+                exit 1
+                ;;
+        esac
+        find . -type f -exec "${SELF}" {} +
+    )
+done

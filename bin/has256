@@ -1,0 +1,21 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use FindBin;
+use lib "${FindBin::Bin}/../lib";
+use My::Term qw(term_query);
+use My::Term::Raw qw(enable_raw_mode disable_raw_mode);
+use Data::Dumper qw(Dumper);
+
+exit if !-t 0 || !-t 1;
+
+use constant ST => "\e\\";
+use constant BEL => "\x07";
+use constant DCS => "\eP";
+
+enable_raw_mode();
+my $response = (term_query(query => "\e]4;255;?\a", chop => "\a"));
+disable_raw_mode();
+STDOUT->print("\e[m");
+STDOUT->flush();
+exit($response ne "" ? 0 : 1);

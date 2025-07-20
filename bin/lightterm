@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+if [[ -t 1 ]] ; then
+    echo -n $'\e]10;#dddddd\e\\' # set background color
+    echo -n $'\e]11;#222222\e\\' # set foreground color
+    echo -n $'\e]12;#ffff00\e\\' # set cursor color
+    echo -n $'\e]17;#ffffff\e\\' # set highlight background color
+    echo -n $'\e]19;#000000\e\\' # set highlight foreground color
+fi

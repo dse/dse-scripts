@@ -1,0 +1,12 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use HTML::Entities qw(decode_entities);
+
+use open IO => qw(:locale);
+
+while (<>) {
+    s{<a\s[^>]*(?<=\s)href=\"mailto:[^>]*>(.*?)</a>}{decode_entities($1)}gxe;
+} continue {
+    print;
+}

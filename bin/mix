@@ -1,0 +1,22 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use File::Basename qw(dirname);
+
+use lib dirname(__FILE__) . "/../lib";
+use My::Color;
+
+if (scalar @ARGV < 2) {
+    die("not enough arguments\n");
+}
+
+my ($color_1_str, $color_2_str, $amt) = @ARGV;
+$amt //= 0.50;
+
+my $color_1 = My::Color->new($color_1_str);
+my $color_2 = My::Color->new($color_2_str);
+my $mix = $color_1->mix($color_2, $amt);
+
+printf("%s\n", $mix->to_string);
+printf("%s\n", $mix->to_string('255'));
+printf("%s\n", $mix->to_string('rgb'));

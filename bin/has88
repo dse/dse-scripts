@@ -1,0 +1,14 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use Term::ReadKey qw(ReadMode);
+exit if !-t 0 || !-t 1;
+STDOUT->autoflush(1);
+ReadMode(4);
+print("\e]4;87;?\a");
+my $response;
+warn("read\n");
+read(STDIN, $response, 32);
+warn("done\n");
+ReadMode(0);
+exit($response ne "" ? 0 : 1);
