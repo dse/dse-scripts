@@ -8,41 +8,43 @@ if (scalar @ARGV != 2) {
     die("only_in: incorrect number of arguments\n");
 }
 
-only_in($ARGV[0], $ARGV[1]);
+my $in_common = only_in($ARGV[0], $ARGV[1]);
+    printf("%d files in both trees.\n", $in_common);
 
 sub only_in {
     my ($a, $b, $root_a, $root_b) = @_;
+    my $top = !defined $root_a || !defined $root_b;
     $root_a //= $a;
     $root_b //= $b;
     my @stat_a = lstat($a);
     if (!scalar @stat_a) {
         printf("%s: %s\n", $a, $!);
-        return;
+        return 0;
     }
     my @stat_b = lstat($b);
     if (!scalar @stat_a) {
         printf("%s: %s\n", $b, $!);
-        return;
+        return 0;
     }
     my $type_a = file_type($stat_a[2]);
     my $type_b = file_type($stat_b[2]);
     if ($type_a ne $type_b) {
         printf("File %s is a %s while file %s is a %s\n", $a, $type_a, $b, $type_b);
-        return;
+        return 0;
     }
     if ($type_a ne "directory") {
-        return;
+        return 0;
     }
     # $a and $b are directories.
     my $ah;
     if (!opendir($ah, $a)) {
         printf("%s: %s\n", $a, $!);
-        return;
+        return 0;
     }
     my $bh;
     if (!opendir($bh, $b)) {
         printf("%s: %s\n", $b, $!);
-        return;
+        return 0;
     }
     my %a;
     my %b;
@@ -58,12 +60,14 @@ sub only_in {
     foreach my $only_in_b (grep { !$a{$_} } @b) {
         printf("Only in %s: %s\n", $b, $only_in_b);
     }
+    my $in_common = scalar grep { $a{$_} } @b;
     my @ents = grep { $b{$_} } @a;
     foreach my $ent (@ents) {
         my $ent_a = $a . '/' . $ent;
         my $ent_b = $b . '/' . $ent;
-        only_in($ent_a, $ent_b, $root_a, $root_b);
+        $in_common += only_in($ent_a, $ent_b, $root_a, $root_b);
     }
+    return $in_common;
 }
 
 sub file_type {
