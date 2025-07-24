@@ -1,0 +1,15 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+
+our $incr = 1;
+
+if (scalar @ARGV && $ARGV[0] =~ /^[-+]?\d+$/) {
+    $incr = 0 + shift(@ARGV);
+}
+
+while (<>) {
+    s{(</?)h([12345])(?=\s|/|>)}{$1 . 'h' . ($2 + $incr)}ge;
+} continue {
+    print;
+}
