@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+import argparse, re, random, sys, random
+argparse = argparse.ArgumentParser()
+argparse.add_argument('letter')
+argparse.add_argument('filename', nargs='+')
+args = argparse.parse_args()
+
+# PURPOSE
+#
+# This is for inspecting a monospace typeface you're developing to
+# visually determine if there are any letters that need to be adjusted
+# left or right.  This is the greatest challenge in developing
+# monospace typefaces.
+#
+# DESCRIPTION
+#
+# Given a supplied letter and a dictionary file, find words containing
+# that letter, and group them by the three-character substring with
+# that letter in the middle.  Sort those substrings by occurrence
+# count, highest first.  For each substring, print a randomly selected
+# word containing that substring, highlighting that substring, and
+# aligning the words so that the three-character substrings are in the
+# same column.
+#
+# If stdout is a tty, colors are used to highlight the 3-character
+# substrings; otherwise vertical lines are used.
+#
+# EXAMPLE
+#
+#     $ thingy1 a /usr/share/dict/words | less
+#
+#                               hypergeneti│cal│ly
+#                                      gene│rat│rices
+#                                        ge│lat│es
+#                                          │ran│cidnesses
+#                                    embryo│mat│a
+#                                          .....
+#
+# The substring "cal" occurs in the greatest number of words, followed
+# by "rat", then "lat", etc.
+
+EXTEND = False
+
+matches = {}
+
+if sys.stdout.isatty():
+    GREEN = "\x1b[0;32m"
+    RESET = "\x1b[m"
+else:
+    GREEN = ""
+    RESET = ""
+
+for filename in args.filename:
+    for word in open(filename, 'r'):
+        word = word.strip()
+        if re.search(r'[^a-z]', word):
+            continue
+        for match in re.finditer(r'(?<=(?P<before>[a-z]))(?P<letter>[' + args.letter + '])(?=(?P<after>[a-z]))', word):
+            before = match.group("before")
+            after = match.group("after")
+            letter = match.group("letter")
+            key = before + letter + after
+            if key not in matches:
+                matches[key] = []
+            matches[key].append([word, match])
+
+keys = [*matches.keys()]
+keys.sort(key=lambda x: len(matches[x]), reverse=True)
+
+BOX_DRAWINGS_LIGHT_VERTICAL = chr(0x2502)
+
+for key in keys:
+    [before, letter, after] = key
+    count = len(matches[key])
+    if EXTEND:
+        shuffled = matches[key][:]
+        random.shuffle(shuffled)
+        shuffled = shuffled[0:5]
+        print("")
+        for idx in range(0, len(shuffled)):
+            [word, match] = shuffled[idx]
+            if idx:
+                print("%6s  %3s" % (' ', ' '), end='')
+            else:
+                print("%6d  %s" % (count, key), end='')
+
+            x = match.start() - 1
+            y = match.end() + 1
+            if RESET != "" or GREEN != "":
+                word = word[0:x] + GREEN + word[x:y] + RESET + word[y:]
+            else:
+                word = word[0:x] + BOX_DRAWINGS_LIGHT_VERTICAL + word[x:y] + BOX_DRAWINGS_LIGHT_VERTICAL + word[y:]
+
+            print("%s%s" % (" " * (32 - match.start()), word))
+    else:
+        idx = int(random.random() * len(matches[key]))
+        [word, match] = matches[key][idx]
+
+        x = match.start() - 1
+        y = match.end() + 1
+        if RESET != "" or GREEN != "":
+            word = word[0:x] + GREEN + word[x:y] + RESET + word[y:]
+        else:
+            word = word[0:x] + BOX_DRAWINGS_LIGHT_VERTICAL + word[x:y] + BOX_DRAWINGS_LIGHT_VERTICAL + word[y:]
+        print("%s%s" % (" " * (32 - match.start()), word))
