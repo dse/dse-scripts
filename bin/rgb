@@ -1,0 +1,127 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use List::Util qw(max min);
+use POSIX qw(round fmod);
+use Math::Trig qw(pi);
+use Carp::Always;
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
+
+my $RX_HSL_COLOR = qr{(?:
+                          hsla?\(
+                          \s*
+                          (?<h>\d+(?:\.\d*)?|\.\d+)
+                          (?:\s+|\s*,\s*)
+                          (?<s>\d+(?:\.\d*)?|\.\d+)(?<s_unit>%)?
+                          (?:\s+|\s*,\s*)
+                          (?<l>\d+(?:\.\d*)?|\.\d+)(?<l_unit>%)?
+                          (?:
+                              (?:\s+|\s*/\s*)
+                              (?<a>\d+(?:\.\d+)?|\.\d+)(?<a_unit>%)?
+                          )?
+                          \s*
+                          \)
+                      )}xi;
+
+if (scalar @ARGV) {
+    foreach my $arg (@ARGV) {
+        my ($h, $s, $l, $a) = parse_color($arg);
+        if (!defined $h) {
+            warn("cannot parse $arg\n");
+            next;
+        }
+        my ($r, $g, $b) = hsl_to_rgb($h, $s, $l);
+        print(rgb_to_str($r, $g, $b, $a));
+        print("\n");
+    }
+} else {
+    while (<>) {
+        s{$RX_HSL_COLOR}{rgb_to_str(hsl_to_rgb(parse_color($&)))}ge;
+        print;
+    }
+}
+
+sub hsl_to_rgb {
+    my ($h, $s, $l, $a) = (ref($_[0]) eq "ARRAY") ? @{$_[0]} : @_;
+    $h = mod($h, 360);
+    $s = clamp($s, 0, 1);
+    $l = clamp($l, 0, 1);
+    $a = clamp($a, 0, 1) if defined $a;
+
+    my $c = (1 - abs(2 * $l - 1)) * $s;
+    my $x = $c * (1 - abs(mod($h / 60, 2) - 1));
+    my $m = $l - $c / 2;
+    my ($r, $g, $b);
+    if ($h < 60) {
+        ($r, $g, $b) = ($c, $x, 0);
+    } elsif ($h < 120) {
+        ($r, $g, $b) = ($x, $c, 0);
+    } elsif ($h < 180) {
+        ($r, $g, $b) = (0, $c, $x);
+    } elsif ($h < 240) {
+        ($r, $g, $b) = (0, $x, $c);
+    } elsif ($h < 300) {
+        ($r, $g, $b) = ($x, 0, $c);
+    } elsif ($h < 360) {
+        ($r, $g, $b) = ($c, 0, $x);
+    }
+    $r += $m;
+    $g += $m;
+    $b += $m;
+    my @plus = %+;
+    return ($r, $g, $b, $a) if wantarray && defined $a;
+    return [$r, $g, $b, $a] if defined $a;
+    return ($r, $g, $b) if wantarray;
+    return [$r, $g, $b];
+}
+
+sub rgb_to_str {
+    my ($r, $g, $b, $a) = ref($_[0]) eq "ARRAY" ? @{$_[0]} : @_;
+    $r = clamp($r, 0, 1);
+    $g = clamp($g, 0, 1);
+    $b = clamp($b, 0, 1);
+    $a = clamp($a, 0, 1) if defined $a;
+    return sprintf("\#%02x%02x%02x%02x", round($r * 255), round($g * 255), round($b * 255), round($a * 255)) if defined $a;
+    return sprintf("\#%02x%02x%02x", round($r * 255), round($g * 255), round($b * 255));
+}
+
+sub parse_color {
+    my $color = shift;
+    if ($color =~ /^${RX_HSL_COLOR}$/) {
+        my ($h, $s, $l, $a, $s_unit, $l_unit, $a_unit) = @+{qw(h s l a s_unit l_unit a_unit)};
+        $s /= 100 if defined $s_unit && $s_unit eq "%";
+        $l /= 100 if defined $l_unit && $l_unit eq "%";
+        $a /= 100 if defined $a_unit && $a_unit eq "%";
+        $h = mod($h, 360);
+        $s = clamp($s, 0, 1);
+        $l = clamp($l, 0, 1);
+        $a = clamp($a, 0, 1) if defined $a;
+        return ($h, $s, $l, $a) if wantarray && defined $a;
+        return ($h, $s, $l) if wantarray;
+        return [$h, $s, $l, $a] if defined $a;
+        return [$h, $s, $l];
+    }
+}
+
+sub mod {
+    my ($x, $y) = @_;
+    return fmod($y + fmod($x, $y), $y);
+}
+
+sub clamp {
+    my ($x, $min, $max) = @_;
+    if (defined $max) {
+        if ($min == $max) {
+            return $min;
+        }
+        if ($min > $max) {
+            ($min, $max) = ($max, $min);
+        }
+        return $x < $min ? $min : $x > $max ? $max : $x;
+    }
+    if ($min < 0) {
+        return $x < $min ? $min : $x > 0 ? 0 : $x;
+    }
+    return $x < 0 ? 0 : $x > $max ? $max : $x;
+}

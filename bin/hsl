@@ -1,0 +1,120 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use List::Util qw(max min);
+use POSIX qw(fmod);
+
+my $RX_HEX_RGB_COLOR = qr{\#?
+                          (?:
+                              (?<r2>[0-9A-Fa-f]{2})
+                              (?<g2>[0-9A-Fa-f]{2})
+                              (?<b2>[0-9A-Fa-f]{2})
+                              (?<a2>[0-9A-Fa-f]{2})?
+                          |
+                              (?<r1>[0-9A-Fa-f])
+                              (?<g1>[0-9A-Fa-f])
+                              (?<b1>[0-9A-Fa-f])
+                              (?<a1>[0-9A-Fa-f])?
+                          )\b}xi;
+
+if (scalar @ARGV) {
+    foreach my $arg (@ARGV) {
+        my ($r, $g, $b, $a) = parse_rgb_color($arg);
+        if (!defined $r) {
+            warn("cannot parse $arg\n");
+            next;
+        }
+        my ($h, $s, $l) = rgb_to_hsl($r, $g, $b);
+        print(hsl_to_str($h, $s, $l, $a));
+        print("\n");
+    }
+} else {
+    while (<>) {
+        s{$RX_HEX_RGB_COLOR}{hsl_to_str(rgb_to_hsl(parse_rgb_color($&)))}ge;
+        print;
+    }
+}
+
+sub hsl_to_str {
+    my ($h, $s, $l, $a) = ref($_[0] eq "ARRAY") ? @{$_[0]} : @_;
+    $h = clamp($h, 0, 360);
+    $s = clamp($s, 0, 1);
+    $l = clamp($l, 0, 1);
+    $a = clamp($a, 0, 1) if defined $a;
+    return sprintf("hsl(%5.1f, %5.1f%%, %5.1f%%, %.3f)", $h, $s * 100, $l * 100, $a) if defined $a;
+    return sprintf("hsl(%5.1f, %5.1f%%, %5.1f%%)", $h, $s * 100, $l * 100);
+}
+
+sub parse_rgb_color {
+    my $color = shift;
+    if ($color =~ /^${RX_HEX_RGB_COLOR}$/) {
+        my ($r1, $g1, $b1, $a1, $r2, $g2, $b2, $a2) = @+{qw(r1 g1 b1 a1 r2 g2 b2 a2)};
+        my ($r, $g, $b, $a);
+        if (defined $r1) {
+            $r = hex($r1) / 15;
+            $g = hex($g1) / 15;
+            $b = hex($b1) / 15;
+            $a = hex($a1) / 15 if defined $a1;
+        } elsif (defined $r2) {
+            $r = hex($r2) / 255;
+            $g = hex($g2) / 255;
+            $b = hex($b2) / 255;
+            $a = hex($a2) / 255 if defined $a2;
+        } else {
+            die("UNEXPECTED ERROR 1 HAPPEN :-(\n");
+        }
+        return ($r, $g, $b, $a) if defined $a && wantarray;
+        return ($r, $g, $b) if wantarray;
+        return [$r, $g, $b, $a] if defined $a;
+        return [$r, $g, $b];
+    }
+    return;
+}
+
+sub rgb_to_hsl {
+    my ($r, $g, $b, $a) = ref($_[0] eq "ARRAY") ? @{$_[0]} : @_;   # already in [0, 1]
+    $r = clamp($r, 0, 1);
+    $g = clamp($g, 0, 1);
+    $b = clamp($b, 0, 1);
+    $a = clamp($a, 0, 1) if defined $a;
+    my $c_max = max($r, $g, $b);
+    my $c_min = min($r, $g, $b);
+    my $delta = $c_max - $c_min;
+    my $h;
+    if (!$delta) {
+        $h = 0;
+    } elsif ($c_max == $r) {
+        $h = fmod(60 * (($g - $b) / $delta + 6), 360);
+    } elsif ($c_max == $g) {
+        $h = 60 * (($b - $r) / $delta + 2);
+    } elsif ($c_max == $b) {
+        $h = 60 * (($r - $g) / $delta + 4);
+    }
+    my $l = ($c_max + $c_min) / 2;
+    my $s = $delta ? ($delta / (1 - abs(2 * $l - 1))) : 0;
+    return ($h, $s, $l, $a) if defined $a && wantarray;
+    return ($h, $s, $l) if wantarray;
+    return [$h, $s, $l, $a] if defined $a;
+    return [$h, $s, $l];
+}
+
+sub clamp {
+    my ($x, $min, $max) = @_;
+    if (!defined $max) {
+        if ($min == 0) {
+            return 0;
+        } elsif ($min > 0) {
+            $max = $min;
+            $min = 0;
+        } else {
+            $max = 0;
+        }
+    } else {
+        if ($min == 0 && $max == 0) {
+            return 0;
+        } elsif ($min > $max) {
+            ($min, $max) = ($max, $min);
+        }
+    }
+    return ($x < $min) ? $min : ($x > $max) ? $max : $x;
+}
