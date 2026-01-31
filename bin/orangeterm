@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+if [[ -t 1 ]] ; then
+    echo -n $'\e]11;#663300\e\\'
+fi
