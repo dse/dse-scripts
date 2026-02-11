@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+shopt -s lastpipe
+
+declare -a jshint_exes=()
+type -a -p jshint | readarray -t jshint_exes
+
+# find a jshint executable.
+jshint_exe=""
+for exe in "${jshint_exes[@]}" ; do
+    if [[ "${exe}" -ef "$0" ]] ; then
+        # this wrapper is being executed as jshint anmd
+        # we want to skip it.
+        continue
+    fi
+    jshint_exe="${exe}"
+done
+
+# exit early indicating failure if one isn't found.
+if [[ "${jshint_exe}" == "" ]] ; then
+    echo "jshint: command not found" >&2
+    exit 1
+fi
+
+filename_displayed=""
+filename=""
+filename_arg_idx=""
+filename_displayed_idx=""
+(( i = 1 ))
+while (( i <= $# )) ; do
+    arg="${!i}"
+    if [[ "${arg}" == --*=* ]] ; then
+        (( i++ ))
+    elif [[ "${arg}" == "--filename" ]] ; then
+        (( i++ ))
+        filename_displayed="${!i}"
+        filename_displayed_idx="$i"
+        (( i++ ))
+    elif [[ "${arg}" == "--config" ]] ; then
+        (( i += 2 ))
+    elif [[ "${arg}" == "-" ]] ; then
+        filename="${arg}"
+        filename_arg_idx="$i"
+        break
+    else
+        filename="${arg}"
+        filename_arg_idx="$i"
+        break
+    fi
+done
+
+: ${filename_displayed:="${filename}"}
+
+if [[ "${filename}" == "" ]] ; then
+    echo "jshint-wrapper: no filename found in jshint command" >&2
+    exit 1
+fi
+
+astro=0
+if [[ "${filename}" == *.astro ]] ; then
+    astro=1
+elif [[ "${filename_displayed}" == *.astro ]] ; then
+    astro=1
+fi
+
+if (( astro )) ; then
+    if [[ "${filename}" == "-" ]] ; then
+        astro-filter | "${jshint_exe}" "$@"
+    else
+        idx="(( $# - 1 ))"
+        declare -a cmd
+        cmd="$@"
+        cmd[$idx]="-"
+        astro-filter < "${filename}" | "${cmd[@]}"
+    fi
+else    
+    exec "${jshint_exe}" "$@"
+fi
