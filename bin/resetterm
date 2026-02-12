@@ -1,9 +1,32 @@
 #!/usr/bin/env bash
 if [[ -t 1 ]] ; then
-    echo -n $'\e]110;\e\\'       # reset foreground color
-    echo -n $'\e]111;\e\\'       # reset background color
-    echo -n $'\e]112;\e\\'       # reset cursor color
-    echo -n $'\e]117;\e\\'       # reset highlight foreground color
-    echo -n $'\e]119;\e\\'       # reset highlight foreground color
+    echo -n $'\e]104;0\e\\'
+    echo -n $'\e]104;1\e\\'
+    echo -n $'\e]104;2\e\\'
+    echo -n $'\e]104;3\e\\'
+    echo -n $'\e]104;4\e\\'
+    echo -n $'\e]104;5\e\\'
+    echo -n $'\e]104;6\e\\'
+    echo -n $'\e]104;7\e\\'
+    echo -n $'\e]104;8\e\\'
+    echo -n $'\e]104;9\e\\'
+    echo -n $'\e]104;10\e\\'
+    echo -n $'\e]104;11\e\\'
+    echo -n $'\e]104;12\e\\'
+    echo -n $'\e]104;13\e\\'
+    echo -n $'\e]104;14\e\\'
+    echo -n $'\e]104;15\e\\'
+    #                  ^-- mintty doesn't take a semicolon here.
+
+    echo -n $'\e]110;\e\\'
+    echo -n $'\e]111;\e\\'
+    echo -n $'\e]112;\e\\'
+    echo -n $'\e]113;\e\\'
+    echo -n $'\e]114;\e\\'
+    echo -n $'\e]115;\e\\'
+    echo -n $'\e]116;\e\\'
+    echo -n $'\e]117;\e\\'
+    echo -n $'\e]118;\e\\'
+    echo -n $'\e]119;\e\\'
     #               ^-- why, mintty?
 fi
