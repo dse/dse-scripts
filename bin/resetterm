@@ -16,7 +16,7 @@ if [[ -t 1 ]] ; then
     echo -n $'\e]104;13\e\\'
     echo -n $'\e]104;14\e\\'
     echo -n $'\e]104;15\e\\'
-    #                  ^-- mintty doesn't take a semicolon here.
+    #                 /\ mintty doesn't take a semicolon here.
 
     echo -n $'\e]110;\e\\'
     echo -n $'\e]111;\e\\'
